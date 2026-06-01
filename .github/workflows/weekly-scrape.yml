@@ -1,0 +1,43 @@
+name: Weekly NSW Pharmacy Scrape
+
+on:
+  schedule:
+    - cron: '0 15 * * 0'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+      - name: Write OAuth token
+        run: echo '${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}' > token.json
+      - name: Write OAuth credentials
+        run: echo '${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}' > credentials.json
+      - name: Restore previous snapshot
+        uses: actions/cache/restore@v4
+        with:
+          path: snapshot.json
+          key: pharmacy-snapshot
+      - name: Run scraper
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python -m src.main
+      - name: Cache snapshot
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: snapshot.json
+          key: pharmacy-snapshot-${{ github.run_id }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot
+          path: snapshot.json
+          retention-days: 90
