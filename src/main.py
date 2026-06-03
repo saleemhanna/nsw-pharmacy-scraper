@@ -16,6 +16,7 @@ import structlog
 from src.api import NSWApiClient
 from src.diff import compute_diffs
 from src.models import Pharmacy
+from src.tabs import rebuild_all_tabs
 from src.sheets import (
     append_changes,
     append_run,
@@ -237,6 +238,7 @@ async def run() -> int:
         changes_count = len(changes)
         write_current(book, result_list, started)
         append_changes(book, changes, started)
+        rebuild_all_tabs(book, result_list)
 
         log.info("scrape_complete", records=total, new=new_count, changes=changes_count, expired=expired)
         notes = f"new/changed: {new_count}, expired culled: {expired}"
