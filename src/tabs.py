@@ -82,6 +82,7 @@ def rebuild_all_tabs(book: Spreadsheet, pharmacies: list[Pharmacy]) -> None:
 
     _rebuild_cwh_all(book, pharmacy_dicts)
     _rebuild_cwh_owner_tabs(book, pharmacy_dicts)
+    _rebuild_non_cwh_owner_tabs(book, pharmacy_dicts)
     _rebuild_20yr_tabs(book, pharmacy_dicts)
     log.info("all_tabs_rebuilt")
 
@@ -253,3 +254,74 @@ def _rebuild_20yr_tabs(book: Spreadsheet, data: list[dict]) -> None:
                      str(p.get("latitude", "")), str(p.get("longitude", ""))])
     _write_tab(book, "Sydney 20+ Year Owners", columns, rows)
     log.info("tab_rebuilt", tab="Sydney 20+ Year Owners", records=len(sydney_results))
+
+
+def _rebuild_non_cwh_owner_tabs(book: Spreadsheet, data: list[dict]) -> None:
+    non_cwh = [p for p in data if "chemist warehouse" not in (p.get("trading_name") or "").lower()
+               and "chemist warehouse" not in (p.get("licensee") or "").lower()]
+
+    store_lookup: dict[str, dict] = {}
+    person_stores: dict[str, set[str]] = defaultdict(set)
+    person_dates: dict[str, str] = {}
+
+    for p in non_cwh:
+        store = p["trading_name"] or p["registration_number"]
+        start = p.get("start_date", "")
+        store_lookup[store] = p
+        for person in _get_owners_and_fi(p):
+            person_stores[person].add(store)
+            if start:
+                existing = person_dates.get(person, "")
+                if not existing or start > existing:
+                    person_dates[person] = start
+
+    individuals = {k: v for k, v in person_stores.items() if _is_individual(k)}
+
+    # Single-store owners
+    cols_single = ["#", "start_date", "owner", "store", "registration_number", "address", "suburb", "postcode"]
+    singles = []
+    for person, stores in individuals.items():
+        if len(stores) != 1:
+            continue
+        date = person_dates.get(person, "")
+        store = list(stores)[0]
+        singles.append((date, person, store))
+    singles.sort(key=lambda x: x[0], reverse=True)
+
+    rows = [cols_single]
+    for i, (date, person, store) in enumerate(singles, 1):
+        p = store_lookup.get(store, {})
+        rows.append([str(i), date or "", person, store, p.get("registration_number", ""),
+                     _get_address(p), p.get("suburb", ""), p.get("postcode", "")])
+    _write_tab(book, "Non-CWH Single Owners", cols_single, rows)
+    log.info("tab_rebuilt", tab="Non-CWH Single Owners", records=len(singles))
+
+    # Multi-store owners (2, 3, 4, 5)
+    cols_multi = ["#", "owner", "stores", "store_name", "registration_number", "start_date", "address", "suburb", "postcode"]
+    for count in [2, 3, 4, 5]:
+        tab_name = f"Non-CWH {count}-Store Owners"
+        matching = {k: v for k, v in individuals.items() if len(v) == count}
+        sorted_owners = sorted(matching.keys(), key=lambda k: person_dates.get(k, ""), reverse=True)
+
+        rows = [cols_multi]
+        i = 1
+        for owner in sorted_owners:
+            stores = sorted(matching[owner],
+                          key=lambda s: store_lookup.get(s, {}).get("start_date", ""), reverse=True)
+            for j, store in enumerate(stores):
+                p = store_lookup.get(store, {})
+                rows.append([
+                    str(i) if j == 0 else "",
+                    owner if j == 0 else "",
+                    str(count) if j == 0 else "",
+                    store,
+                    p.get("registration_number", ""),
+                    p.get("start_date", ""),
+                    _get_address(p),
+                    p.get("suburb", ""),
+                    p.get("postcode", ""),
+                ])
+            i += 1
+
+        _write_tab(book, tab_name, cols_multi, rows)
+        log.info("tab_rebuilt", tab=tab_name, records=len(sorted_owners))
