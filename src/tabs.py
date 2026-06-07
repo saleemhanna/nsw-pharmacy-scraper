@@ -1,6 +1,7 @@
 """Rebuild all analysis tabs on the Google Sheet."""
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from typing import Any
 
@@ -84,6 +85,7 @@ def rebuild_all_tabs(book: Spreadsheet, pharmacies: list[Pharmacy]) -> None:
     _rebuild_cwh_owner_tabs(book, pharmacy_dicts)
     _rebuild_non_cwh_owner_tabs(book, pharmacy_dicts)
     _rebuild_20yr_tabs(book, pharmacy_dicts)
+    _rebuild_door_knock_no_cwh(book, pharmacy_dicts)
     log.info("all_tabs_rebuilt")
 
 
@@ -325,3 +327,155 @@ def _rebuild_non_cwh_owner_tabs(book: Spreadsheet, data: list[dict]) -> None:
 
         _write_tab(book, tab_name, cols_multi, rows)
         log.info("tab_rebuilt", tab=tab_name, records=len(sorted_owners))
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _nearest_neighbour_route(stops: list[dict]) -> list[dict]:
+    if len(stops) <= 1:
+        return stops
+    remaining = list(stops)
+    route = [remaining.pop(0)]
+    while remaining:
+        last = route[-1]
+        best_idx = 0
+        best_dist = float("inf")
+        for i, s in enumerate(remaining):
+            d = _haversine_km(last["lat"], last["lon"], s["lat"], s["lon"])
+            if d < best_dist:
+                best_dist = d
+                best_idx = i
+        route.append(remaining.pop(best_idx))
+    return route
+
+
+def _estimate_route_time(route: list[dict], minutes_per_visit: int = 15, drive_speed_kmh: int = 30) -> float:
+    total = len(route) * minutes_per_visit
+    for i in range(len(route) - 1):
+        km = _haversine_km(route[i]["lat"], route[i]["lon"], route[i + 1]["lat"], route[i + 1]["lon"])
+        total += (km / drive_speed_kmh) * 60
+    return total
+
+
+def _rebuild_door_knock_no_cwh(book: Spreadsheet, data: list[dict]) -> None:
+    MINUTES_PER_VISIT = 15
+    DRIVE_SPEED_KMH = 30
+    MAX_MINUTES = 180
+    CUTOFF = "2006-06-01"
+
+    cwh = [p for p in data if "chemist warehouse" in (p.get("trading_name") or "").lower()
+           or "chemist warehouse" in (p.get("licensee") or "").lower()]
+    cwh_suburbs = set(p.get("suburb", "").upper() for p in cwh if p.get("suburb"))
+
+    person_stores: dict[str, set[str]] = defaultdict(set)
+    person_dates: dict[str, str] = {}
+    store_lookup: dict[str, dict] = {}
+
+    for p in data:
+        store = p["trading_name"] or p["registration_number"]
+        start = p.get("start_date", "")
+        store_lookup[store] = p
+        for person in _get_owners_and_fi(p):
+            person_stores[person].add(store)
+            if start:
+                existing = person_dates.get(person, "")
+                if not existing or start < existing:
+                    person_dates[person] = start
+
+    pharmacy_owners: dict[str, list[str]] = defaultdict(list)
+    pharmacy_date: dict[str, str] = {}
+
+    for person, stores in person_stores.items():
+        if len(stores) != 1:
+            continue
+        if not _is_individual(person):
+            continue
+        date = person_dates.get(person, "")
+        if not date or date >= CUTOFF:
+            continue
+        store = list(stores)[0]
+        p = store_lookup.get(store, {})
+        if not _is_sydney(p):
+            continue
+        suburb = p.get("suburb", "").upper()
+        if suburb in cwh_suburbs:
+            continue
+        pharmacy_owners[store].append(person)
+        if store not in pharmacy_date or date < pharmacy_date[store]:
+            pharmacy_date[store] = date
+
+    stops = []
+    for store, owners in pharmacy_owners.items():
+        p = store_lookup[store]
+        year = int(pharmacy_date[store][:4]) if pharmacy_date[store][:4].isdigit() else 0
+        years_held = str(2026 - year) if year > 1900 else "20+"
+        stops.append({
+            "store": store,
+            "owners": " & ".join(owners),
+            "start_date": pharmacy_date[store],
+            "years_held": years_held,
+            "suburb": p.get("suburb", ""),
+            "postcode": p.get("postcode", ""),
+            "address": _get_address(p),
+            "lat": p.get("latitude", 0),
+            "lon": p.get("longitude", 0),
+            "reg": p.get("registration_number", ""),
+        })
+
+    remaining = list(stops)
+    remaining.sort(key=lambda s: (s["lon"], s["lat"]))
+
+    days: list[list[dict]] = []
+    while remaining:
+        route = [remaining.pop(0)]
+        route_time = float(MINUTES_PER_VISIT)
+        while remaining:
+            last = route[-1]
+            best_idx = 0
+            best_dist = float("inf")
+            for i, s in enumerate(remaining):
+                d = _haversine_km(last["lat"], last["lon"], s["lat"], s["lon"])
+                if d < best_dist:
+                    best_dist = d
+                    best_idx = i
+            added_time = MINUTES_PER_VISIT + (best_dist / DRIVE_SPEED_KMH) * 60
+            if route_time + added_time > MAX_MINUTES:
+                break
+            route.append(remaining.pop(best_idx))
+            route_time += added_time
+        route = _nearest_neighbour_route(route)
+        days.append(route)
+
+    columns = ["Day", "Stop", "Store", "Owner(s)", "Years", "Start Date", "Address", "Suburb", "Postcode", "Est. Time"]
+    rows: list[list[str]] = [columns]
+
+    for day_num, route in enumerate(days, 1):
+        total_time = _estimate_route_time(route, MINUTES_PER_VISIT, DRIVE_SPEED_KMH)
+        suburbs = sorted(set(s["suburb"] for s in route))
+        area_name = ", ".join(suburbs[:3])
+        if len(suburbs) > 3:
+            area_name += f" +{len(suburbs) - 3} more"
+
+        for stop_num, s in enumerate(route, 1):
+            rows.append([
+                f"Day {day_num} — {area_name}" if stop_num == 1 else "",
+                str(stop_num),
+                s["store"],
+                s["owners"],
+                s["years_held"],
+                s["start_date"],
+                s["address"],
+                s["suburb"],
+                s["postcode"],
+                f"{int(total_time)} min" if stop_num == 1 else "",
+            ])
+        rows.append([""] * len(columns))
+
+    _write_tab(book, "Door Knock (No CWH Suburbs)", columns, rows)
+    log.info("tab_rebuilt", tab="Door Knock (No CWH Suburbs)", stops=len(stops), days=len(days))

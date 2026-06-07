@@ -6,7 +6,7 @@ venv/
 *.json
 !**/package*.json
 !.vscode/*.json
-snapshot.json
+!snapshot.json
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
