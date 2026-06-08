@@ -17,9 +17,9 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
       - name: Write OAuth token
-        run: echo '${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}' > token.json
+        run: printf '%s' '${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}' > token.json
       - name: Write OAuth credentials
-        run: echo '${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}' > credentials.json
+        run: printf '%s' '${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}' > credentials.json
       - name: Restore previous snapshot
         id: cache
         uses: actions/cache/restore@v4

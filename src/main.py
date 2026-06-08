@@ -148,7 +148,7 @@ async def run() -> int:
         # Load previous snapshot for smart caching
         prev_pharmacies: dict[str, Pharmacy] = {}
         if SNAPSHOT_PATH.exists():
-            prev_data = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
+            prev_data = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8-sig"))
             for raw in prev_data:
                 p = Pharmacy(**{**raw, "start_date": raw.get("start_date", "")})
                 prev_pharmacies[p.registration_number] = p
