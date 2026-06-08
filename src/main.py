@@ -133,7 +133,7 @@ async def _collect_all(client: NSWApiClient) -> dict[str, dict[str, Any]]:
 
 
 async def run() -> int:
-    sheet_id = os.environ.get("SHEET_ID") or DEFAULT_SHEET_ID
+    sheet_id = (os.environ.get("SHEET_ID") or DEFAULT_SHEET_ID).strip().strip("﻿")
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
 
     started = utc_now_iso()
