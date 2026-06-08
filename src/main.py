@@ -237,7 +237,9 @@ async def run() -> int:
         changes = compute_diffs(previous, current_rows)
         changes_count = len(changes)
         write_current(book, result_list, started)
+        time.sleep(10)
         append_changes(book, changes, started)
+        time.sleep(10)
         rebuild_all_tabs(book, result_list)
 
         log.info("scrape_complete", records=total, new=new_count, changes=changes_count, expired=expired)

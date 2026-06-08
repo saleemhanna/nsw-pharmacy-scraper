@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import time
 from collections import defaultdict
 from typing import Any
 
@@ -36,13 +37,24 @@ def _format_tab(ws: Worksheet, columns: list[str], total_rows: int) -> None:
 
 
 def _write_tab(book: Spreadsheet, tab_name: str, columns: list[str], rows: list[list[str]]) -> None:
-    try:
-        ws = book.worksheet(tab_name)
-        ws.clear()
-    except gspread.WorksheetNotFound:
-        ws = book.add_worksheet(tab_name, rows=2, cols=len(columns))
-    ws.update(values=rows, range_name="A1", value_input_option="RAW")
-    _format_tab(ws, columns, len(rows))
+    for attempt in range(5):
+        try:
+            try:
+                ws = book.worksheet(tab_name)
+                ws.clear()
+            except gspread.WorksheetNotFound:
+                ws = book.add_worksheet(tab_name, rows=2, cols=len(columns))
+            ws.update(values=rows, range_name="A1", value_input_option="RAW")
+            _format_tab(ws, columns, len(rows))
+            time.sleep(5)
+            return
+        except gspread.exceptions.APIError as e:
+            if "429" in str(e) and attempt < 4:
+                wait = 30 * (attempt + 1)
+                log.warning("sheets_rate_limited", tab=tab_name, wait=wait, attempt=attempt + 1)
+                time.sleep(wait)
+            else:
+                raise
 
 
 def _is_excluded(name: str) -> bool:
