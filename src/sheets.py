@@ -96,6 +96,9 @@ def open_sheet(
             authorized_user_filename=str(tok_file),
             scopes=SCOPES,
         )
+        if gc.auth and hasattr(gc.auth, "refresh") and gc.auth.expired:
+            import google.auth.transport.requests
+            gc.auth.refresh(google.auth.transport.requests.Request())
         return gc.open_by_key(sheet_id)
 
     creds, _ = google.auth.default(scopes=SCOPES)  # type: ignore[no-untyped-call]
