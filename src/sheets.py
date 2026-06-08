@@ -85,6 +85,11 @@ def open_sheet(
 
     creds_file = credentials_path or DEFAULT_CREDENTIALS
     tok_file = token_path or DEFAULT_TOKEN
+    for f in [creds_file, tok_file]:
+        if f.exists():
+            raw = f.read_bytes()
+            if raw[:3] == b"\xef\xbb\xbf":
+                f.write_bytes(raw[3:])
     if creds_file.exists():
         gc = gspread.oauth(
             credentials_filename=str(creds_file),
