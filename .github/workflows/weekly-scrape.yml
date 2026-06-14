@@ -5,6 +5,11 @@ on:
     - cron: '0 15 * * 0'
   workflow_dispatch:
 
+# Opt into Node.js 24 for JS actions ahead of GitHub's forced migration (2026-06-16).
+# Removes the Node 20 deprecation warning; roll back with ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true if needed.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
