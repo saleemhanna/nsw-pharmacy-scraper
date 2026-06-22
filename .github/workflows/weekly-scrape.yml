@@ -21,13 +21,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - name: Write OAuth files
-        env:
-          TOKEN_JSON: ${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}
-          CREDS_JSON: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}
-        run: |
-          python -c "import os; open('token.json','w').write(os.environ['TOKEN_JSON'])"
-          python -c "import os; open('credentials.json','w').write(os.environ['CREDS_JSON'])"
       - name: Restore previous snapshot
         id: cache
         uses: actions/cache/restore@v4
@@ -42,19 +35,21 @@ jobs:
       - name: Verify sheet access
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
           python -c "
           import os, sys
           sys.path.insert(0, '.')
           from src.sheets import open_sheet
-          sid = os.environ.get('SHEET_ID', '1502YpdciO9NSeyzBEr6wf75Y5Gpan-qPXw0elKHve0c')
+          sid = (os.environ.get('SHEET_ID') or '1502YpdciO9NSeyzBEr6wf75Y5Gpan-qPXw0elKHve0c').strip().lstrip('﻿')
           print(f'Sheet ID: {sid[:8]}...{sid[-8:]}')
-          book = open_sheet(sid)
+          book = open_sheet(sid, os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON'))
           print(f'Sheet OK: {book.title}')
           "
       - name: Run scraper
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: python -m src.main
       - name: Cache snapshot
         if: always()
