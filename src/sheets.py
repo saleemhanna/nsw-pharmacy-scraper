@@ -78,9 +78,8 @@ def open_sheet(
     token_path: Path | None = None,
 ) -> Spreadsheet:
     if service_account_json:
-        # lstrip BOM: a UTF-8 BOM in the secret breaks json.loads (see June 2026 OAuth saga)
         creds: Any = Credentials.from_service_account_info(  # type: ignore[no-untyped-call]
-            json.loads(service_account_json.lstrip("﻿")), scopes=SCOPES
+            json.loads(service_account_json), scopes=SCOPES
         )
         return gspread.authorize(creds).open_by_key(sheet_id)
 
