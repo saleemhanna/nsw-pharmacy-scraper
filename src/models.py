@@ -76,14 +76,9 @@ class Pharmacy(BaseModel):
                 if role_name.lower().startswith("owner"):
                     owner_parts.append(name)
                 elif role_name.lower().startswith("financial interest"):
-                    related = [
-                        f"{lic['licensee']} - {lic['licenceNumber']}"
-                        for lic in party.get("licences", [])
-                    ]
-                    entry = name
-                    if related:
-                        entry += " [related: " + "; ".join(related) + "]"
-                    fi_parts.append(entry)
+                    # store the individual's name only; the "[related: ...]" list of
+                    # their other pharmacies was noise and is intentionally dropped
+                    fi_parts.append(name)
         self.start_date = min(all_dates) if all_dates else ""
         self.owners = " | ".join(owner_parts)
         self.financial_interests = " | ".join(fi_parts)

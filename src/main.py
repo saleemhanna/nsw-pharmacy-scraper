@@ -170,7 +170,8 @@ async def run() -> int:
             if prev and prev.licence_id == p.licence_id and prev.owners:
                 p.start_date = prev.start_date
                 p.owners = prev.owners
-                p.financial_interests = prev.financial_interests
+                # strip any legacy "[related: ...]" carried over from an older snapshot
+                p.financial_interests = re.sub(r"\s*\[related:[^\]]*\]", "", prev.financial_interests)
                 p.premises_details = prev.premises_details
                 p.latitude = prev.latitude
                 p.longitude = prev.longitude
