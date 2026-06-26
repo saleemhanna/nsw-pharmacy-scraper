@@ -34,6 +34,8 @@ SNAPSHOT_PATH = Path("snapshot.json")
 ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
 POLITE_DELAY = 5.0
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+PLACES_URL = "https://places.googleapis.com/v1/places:searchText"
+MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
 STRIP_PATTERNS = [
     re.compile(r"^Shops?\s+[\d&/\s-]+,?\s*", re.IGNORECASE),
@@ -88,6 +90,29 @@ def _geocode(client: httpx.Client, address: str) -> tuple[float, float]:
         results = r.json()
         if results:
             return float(results[0]["lat"]), float(results[0]["lon"])
+    except Exception:
+        pass
+    return 0.0, 0.0
+
+
+def _geocode_places(client: httpx.Client, query: str) -> tuple[float, float]:
+    """Geocode via Google Places (New) text search — resolves to the exact business shopfront."""
+    if not MAPS_API_KEY:
+        return 0.0, 0.0
+    try:
+        r = client.post(
+            PLACES_URL,
+            headers={
+                "X-Goog-Api-Key": MAPS_API_KEY,
+                "X-Goog-FieldMask": "places.location",
+            },
+            json={"textQuery": query, "regionCode": "AU", "maxResultCount": 1},
+        )
+        r.raise_for_status()
+        places = r.json().get("places", [])
+        if places:
+            loc = places[0]["location"]
+            return float(loc["latitude"]), float(loc["longitude"])
     except Exception:
         pass
     return 0.0, 0.0
@@ -203,17 +228,24 @@ async def run() -> int:
             log.info("geocoding", count=len(needs_geocode))
             geo_client = httpx.Client(timeout=30)
             for p in needs_geocode:
-                raw_addr = p.premises_details.rsplit(" (", 1)[0].strip()
-                cleaned = _clean_address(raw_addr)
-                for attempt in [cleaned, raw_addr, f"{p.address}, {p.suburb} NSW {p.postcode}"]:
-                    if not attempt:
-                        continue
-                    lat, lon = _geocode(geo_client, attempt)
-                    time.sleep(1.1)
-                    if lat != 0.0:
-                        p.latitude = lat
-                        p.longitude = lon
-                        break
+                lat = lon = 0.0
+                # Primary: Google Places (New) business-name search → exact shopfront
+                if MAPS_API_KEY:
+                    q = f"{p.trading_name}, {p.suburb} NSW {p.postcode}"
+                    lat, lon = _geocode_places(geo_client, q)
+                # Fallback: Nominatim address geocoding
+                if lat == 0.0:
+                    raw_addr = p.premises_details.rsplit(" (", 1)[0].strip()
+                    cleaned = _clean_address(raw_addr)
+                    for attempt in [cleaned, raw_addr, f"{p.address}, {p.suburb} NSW {p.postcode}"]:
+                        if not attempt:
+                            continue
+                        lat, lon = _geocode(geo_client, attempt)
+                        time.sleep(1.1)
+                        if lat != 0.0:
+                            break
+                p.latitude = lat
+                p.longitude = lon
             geo_client.close()
 
         # Cull expired

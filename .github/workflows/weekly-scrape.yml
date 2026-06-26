@@ -55,6 +55,7 @@ jobs:
       - name: Run scraper
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: python -m src.main
       - name: Cache snapshot
         if: always()
