@@ -2,7 +2,8 @@ name: Weekly NSW Pharmacy Scrape
 
 on:
   schedule:
-    - cron: '0 15 * * 0'
+    # Thursday 01:00 Australia/Sydney = Wednesday 15:00 UTC (≈02:00 Sydney during daylight saving)
+    - cron: '0 15 * * 3'
   workflow_dispatch:
 
 # Opt into Node.js 24 for JS actions ahead of GitHub's forced migration (2026-06-16).
