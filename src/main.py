@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -248,11 +248,13 @@ async def run() -> int:
                 p.longitude = lon
             geo_client.close()
 
-        # Cull expired
-        result_list = [p for p in pharmacies.values() if not (p.expiry_date and p.expiry_date[:10] < today)]
+        # Cull expired — 30-day grace so the 30 June annual-renewal cliff doesn't
+        # wipe pharmacies before the register posts their renewed expiry dates.
+        cull_before = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d")
+        result_list = [p for p in pharmacies.values() if not (p.expiry_date and p.expiry_date[:10] < cull_before)]
         expired = len(pharmacies) - len(result_list)
         if expired:
-            log.info("culled_expired", count=expired)
+            log.info("culled_expired", count=expired, cutoff=cull_before)
 
         new_count = len(need_detail)
         total = len(result_list)
@@ -269,6 +271,10 @@ async def run() -> int:
         current_rows = [pharmacy_to_dict_for_diff(p, started) for p in result_list]
         changes = compute_diffs(previous, current_rows)
         changes_count = len(changes)
+        removed = [c for c in changes if c.change_type == "removed"]
+        if removed:
+            log.warning("pharmacies_removed", count=len(removed),
+                        items=[f"{c.registration_number} {c.old_value}" for c in removed])
         write_current(book, result_list, started)
         time.sleep(10)
         append_changes(book, changes, started)

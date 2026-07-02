@@ -26,10 +26,14 @@ def compute_diffs(
     changes: list[Change] = []
 
     for num in sorted(curr.keys() - prev.keys()):
-        changes.append(Change("added", num, "", "", ""))
+        c = curr[num]
+        changes.append(Change("added", num, "trading_name", "",
+                              f"{c.get('trading_name', '')} ({c.get('suburb', '')})"))
 
     for num in sorted(prev.keys() - curr.keys()):
-        changes.append(Change("removed", num, "", "", ""))
+        p = prev[num]
+        changes.append(Change("removed", num, "trading_name",
+                              f"{p.get('trading_name', '')} ({p.get('suburb', '')})", ""))
 
     for num in sorted(prev.keys() & curr.keys()):
         a, b = prev[num], curr[num]
