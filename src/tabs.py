@@ -97,7 +97,10 @@ def rebuild_all_tabs(book: Spreadsheet, pharmacies: list[Pharmacy]) -> None:
     _rebuild_cwh_owner_tabs(book, pharmacy_dicts)
     _rebuild_non_cwh_owner_tabs(book, pharmacy_dicts)
     _rebuild_20yr_tabs(book, pharmacy_dicts)
-    _rebuild_door_knock_no_cwh(book, pharmacy_dicts)
+    # NOTE: the "Door Knock (No CWH Suburbs)" route plan is intentionally NOT
+    # rebuilt on every run. It's a plan the user works through, and the greedy
+    # nearest-neighbour routing reshuffles whenever coordinates or the qualifying
+    # set change. Rebuild it on demand only (call _rebuild_door_knock_no_cwh).
     log.info("all_tabs_rebuilt")
 
 
