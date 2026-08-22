@@ -9,6 +9,7 @@ import google.auth
 import gspread
 import structlog
 from google.oauth2.service_account import Credentials
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.diff import Change
 from src.models import Pharmacy
@@ -71,6 +72,21 @@ RUNS_COLUMNS = [
 SOURCE_URL = "https://verify.licence.nsw.gov.au/home/Pharmacies"
 
 
+def _is_transient_api_error(exc: BaseException) -> bool:
+    """True for transient Google API errors (5xx / rate limit) worth retrying.
+    Auth/permission errors (401/403) fail fast — retrying won't help."""
+    if isinstance(exc, gspread.exceptions.APIError):
+        code = getattr(getattr(exc, "response", None), "status_code", 0)
+        return code in (429, 500, 502, 503, 504)
+    return False
+
+
+@retry(
+    retry=retry_if_exception(_is_transient_api_error),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=2, max=30),
+    reraise=True,
+)
 def open_sheet(
     sheet_id: str,
     service_account_json: str | None = None,
