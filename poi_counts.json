@@ -1,0 +1,373 @@
+{
+ "Westfield Miranda|-34.035551|151.100637": {
+  "op": "Westfield (Scentre)",
+  "stores": 402,
+  "ph": 3,
+  "est": null,
+  "cname": "Westfield Miranda"
+ },
+ "Westfield Parramatta|-33.817368|151.000058": {
+  "op": "Westfield (Scentre)",
+  "stores": 394,
+  "ph": 5,
+  "est": null,
+  "cname": "Westfield Parramatta"
+ },
+ "Macquarie Centre|-33.777251|151.121135": {
+  "op": "Dexus",
+  "stores": 349,
+  "ph": 3,
+  "est": null,
+  "cname": "Macquarie Centre"
+ },
+ "Westfield Warringah Mall|-33.767869|151.265604": {
+  "op": "Westfield (Scentre)",
+  "stores": 331,
+  "ph": 3,
+  "est": null,
+  "cname": "Westfield Warringah Mall"
+ },
+ "Macarthur Square|-34.074853|150.797948": {
+  "op": "GPT",
+  "stores": 300,
+  "ph": 3,
+  "est": null,
+  "cname": "Macarthur Square"
+ },
+ "Westfield Bondi Junction|-33.891844|151.250758": {
+  "op": "Westfield (Scentre)",
+  "stores": 294,
+  "ph": 4,
+  "est": null,
+  "cname": "Westfield Bondi Junction"
+ },
+ "Westfield Penrith|-33.751453|150.693523": {
+  "op": "Westfield (Scentre)",
+  "stores": 287,
+  "ph": 2,
+  "est": 282,
+  "cname": "Westfield Penrith"
+ },
+ "Westfield Liverpool|-33.918035|150.924222": {
+  "op": "Westfield (Scentre)",
+  "stores": 286,
+  "ph": 2,
+  "est": 281,
+  "cname": "Westfield Liverpool"
+ },
+ "Westfield|-33.703869|151.100835": {
+  "op": "Westfield (Scentre)",
+  "stores": 285,
+  "ph": 3,
+  "est": null,
+  "cname": "Westfield Hornsby"
+ },
+ "Erina Fair Shopping Centre|-33.437605|151.392755": {
+  "op": "Dexus",
+  "stores": 279,
+  "ph": 3,
+  "est": null,
+  "cname": "Erina Fair"
+ },
+ "Castle Towers|-33.730487|151.005425": {
+  "op": "QIC",
+  "stores": 266,
+  "ph": 2,
+  "est": 265,
+  "cname": "Castle Towers"
+ },
+ "Westfield Kotara|-32.942283|151.711094": {
+  "op": "HomeCo (HMC)",
+  "stores": 115,
+  "ph": 1,
+  "est": null,
+  "cname": "Kotara (HomeCo)"
+ },
+ "Margaret Catchpole Room - Vinegar Hill Memorial Centre|-33.690446|150.926369": {
+  "op": "GPT",
+  "stores": 242,
+  "ph": 3,
+  "est": null,
+  "cname": "Rouse Hill Town Centre"
+ },
+ "Charlestown Square|-32.964069|151.693842": {
+  "op": "GPT",
+  "stores": 236,
+  "ph": 3,
+  "est": null,
+  "cname": "Charlestown Square"
+ },
+ "Westfield Sydney|-33.870572|151.208515": {
+  "op": "Westfield (Scentre)",
+  "stores": 233,
+  "ph": 0,
+  "est": null,
+  "cname": "Westfield Sydney (CBD)"
+ },
+ "Westfield Eastgardens|-33.944890|151.224324": {
+  "op": "Westfield (Scentre)",
+  "stores": 230,
+  "ph": 3,
+  "est": null,
+  "cname": "Westfield Eastgardens"
+ },
+ "Westfield Hurstville|-33.965882|151.106033": {
+  "op": "Westfield (Scentre)",
+  "stores": 230,
+  "ph": 2,
+  "est": 225,
+  "cname": "Westfield Hurstville"
+ },
+ "Westfield Burwood|-33.874565|151.105915": {
+  "op": "Westfield (Scentre)",
+  "stores": 226,
+  "ph": 2,
+  "est": 222,
+  "cname": "Westfield Burwood"
+ },
+ "Stockland Shellharbour|-34.563579|150.839290": {
+  "op": "Stockland",
+  "stores": 226,
+  "ph": 3,
+  "est": null,
+  "cname": "Stockland Shellharbour"
+ },
+ "Westfield Chatswood|-33.796768|151.182864": {
+  "op": "Westfield (Scentre)",
+  "stores": 224,
+  "ph": 2,
+  "est": 220,
+  "cname": "Westfield Chatswood"
+ },
+ "Westfield Mt Druitt|-33.767084|150.819802": {
+  "op": "Westfield (Scentre)",
+  "stores": 221,
+  "ph": 3,
+  "est": null,
+  "cname": "Westfield Mt Druitt"
+ },
+ "Stockland Green Hills|-32.762750|151.591231": {
+  "op": "Stockland",
+  "stores": 218,
+  "ph": 2,
+  "est": 215,
+  "cname": "Stockland Green Hills"
+ },
+ "Westfield Tuggerah Shopping Centre|-33.308027|151.412212": {
+  "op": "Westfield (Scentre)",
+  "stores": 215,
+  "ph": 2,
+  "est": 209,
+  "cname": "Westfield Tuggerah"
+ },
+ "Top Ryde City|-33.811583|151.107338": {
+  "op": "Other",
+  "stores": 215,
+  "ph": 3,
+  "est": null,
+  "cname": "Top Ryde City"
+ },
+ "Stockland Merrylands|-33.834595|150.989199": {
+  "op": "Stockland",
+  "stores": 191,
+  "ph": 2,
+  "est": null,
+  "cname": "Stockland Merrylands"
+ },
+ "Stockland Wetherill Park|-33.858735|150.898621": {
+  "op": "Stockland",
+  "stores": 182,
+  "ph": 2,
+  "est": null,
+  "cname": "Stockland Wetherill Park"
+ },
+ "Wollongong Central|-34.425569|150.892859": {
+  "op": "GPT",
+  "stores": 168,
+  "ph": 2,
+  "est": null,
+  "cname": "Wollongong Central"
+ },
+ "HomeCo Castle Hill North|-33.726113|150.976391": {
+  "op": "HomeCo (HMC)",
+  "stores": 152,
+  "ph": 1,
+  "est": null,
+  "cname": "Castle Hill (HomeCo)"
+ },
+ "Broadway Shopping Centre|-33.883776|151.194501": {
+  "op": "Mirvac",
+  "stores": 145,
+  "ph": 3,
+  "est": null,
+  "cname": "Broadway Sydney"
+ },
+ "HomeCo. Roselands|-33.935052|151.069082": {
+  "op": "HomeCo (HMC)",
+  "stores": 142,
+  "ph": 2,
+  "est": null,
+  "cname": "Roselands"
+ },
+ "Rhodes Waterside Shopping Centre|-33.835377|151.085129": {
+  "op": "Other",
+  "stores": 133,
+  "ph": 1,
+  "est": null,
+  "cname": "Rhodes Waterside"
+ },
+ "HomeCo. Carlingford Court|-33.776170|151.052466": {
+  "op": "HomeCo (HMC)",
+  "stores": 131,
+  "ph": 2,
+  "est": null,
+  "cname": "Carlingford Court"
+ },
+ "Birkenhead Point Outlet Centre|-33.855522|151.162105": {
+  "op": "Mirvac",
+  "stores": 129,
+  "ph": 2,
+  "est": null,
+  "cname": "Birkenhead Point"
+ },
+ "Chatswood Chase Shopping Centre|-33.794259|151.186113": {
+  "op": "Vicinity",
+  "stores": 122,
+  "ph": 2,
+  "est": null,
+  "cname": "Chatswood Chase"
+ },
+ "HomeCo. Belrose|-33.703477|151.213149": {
+  "op": "HomeCo (HMC)",
+  "stores": 107,
+  "ph": 1,
+  "est": null,
+  "cname": "Belrose"
+ },
+ "Campbelltown Mall|-34.068774|150.810185": {
+  "op": "Other",
+  "stores": 103,
+  "ph": 2,
+  "est": null,
+  "cname": "Campbelltown Mall"
+ },
+ "Lake Haven Shopping Centre|-33.240890|151.503665": {
+  "op": "Vicinity",
+  "stores": 93,
+  "ph": 2,
+  "est": null,
+  "cname": "Lake Haven Centre"
+ },
+ "Bateau Bay Square|-33.374747|151.473260": {
+  "op": "Other",
+  "stores": 93,
+  "ph": 2,
+  "est": null,
+  "cname": "Bateau Bay Square"
+ },
+ "HomeCo. Tuggerah|-33.309554|151.421150": {
+  "op": "HomeCo (HMC)",
+  "stores": 90,
+  "ph": 0,
+  "est": null,
+  "cname": "Tuggerah (HomeCo)"
+ },
+ "Warriewood Square|-33.695789|151.295871": {
+  "op": "Vicinity",
+  "stores": 86,
+  "ph": 2,
+  "est": null,
+  "cname": "Warriewood Square"
+ },
+ "HomeCo. Glenmore Park Town Centre|-33.789221|150.668473": {
+  "op": "HomeCo (HMC)",
+  "stores": 85,
+  "ph": 0,
+  "est": null,
+  "cname": "Glenmore Park"
+ },
+ "Figtree Grove Shopping Centre|-34.436500|150.863167": {
+  "op": "Vicinity",
+  "stores": 80,
+  "ph": "n/a",
+  "est": null,
+  "cname": "Figtree Grove"
+ },
+ "Greenwood Plaza|-33.840184|151.207384": {
+  "op": "Other",
+  "stores": 80,
+  "ph": 1,
+  "est": null,
+  "cname": "Greenwood Plaza"
+ },
+ "East Village|-33.905369|151.212976": {
+  "op": "Mirvac",
+  "stores": 71,
+  "ph": 1,
+  "est": null,
+  "cname": "East Village Zetland"
+ },
+ "HomeCo. Plumpton Marketplace|-33.745983|150.835730": {
+  "op": "HomeCo (HMC)",
+  "stores": 67,
+  "ph": 1,
+  "est": null,
+  "cname": "Plumpton Marketplace"
+ },
+ "Nepean Village|-33.757047|150.692626": {
+  "op": "Vicinity",
+  "stores": 65,
+  "ph": 1,
+  "est": null,
+  "cname": "Nepean Village"
+ },
+ "Caringbah Shopping Village|-34.043579|151.118472": {
+  "op": "HomeCo (HMC)",
+  "stores": 25,
+  "ph": 1,
+  "est": null,
+  "cname": "Caringbah Village"
+ },
+ "West Ryde Marketplace|-33.806464|151.088302": {
+  "op": "HomeCo (HMC)",
+  "stores": 35,
+  "ph": 1,
+  "est": null,
+  "cname": "West Ryde Marketplace"
+ },
+ "Stockland Gables|-33.624111|150.909758": {
+  "op": "Stockland",
+  "stores": 28,
+  "ph": 1,
+  "est": null,
+  "cname": "Stockland Gables"
+ },
+ "HomeCo. Penrith|-33.764406|150.683018": {
+  "op": "HomeCo (HMC)",
+  "stores": 23,
+  "ph": 0,
+  "est": null,
+  "cname": "Penrith (HomeCo)"
+ },
+ "Westpoint Shopping Centre|-33.771425|150.905924": {
+  "op": "QIC",
+  "stores": "~250",
+  "ph": "n/a",
+  "est": null,
+  "cname": "Westpoint Blacktown"
+ },
+ "Ashfield Mall|-33.889131|151.123881": {
+  "op": "Independent",
+  "stores": 69,
+  "ph": null,
+  "est": null,
+  "cname": "Ashfield Mall"
+ },
+ "Tweed City Shopping Centre|-28.200686|153.545600": {
+  "op": "QIC",
+  "stores": 147,
+  "ph": null,
+  "est": null,
+  "cname": "Tweed City Shopping Centre"
+ }
+}
