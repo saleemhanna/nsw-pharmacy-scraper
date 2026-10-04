@@ -1,0 +1,128 @@
+name: Fortnightly POI Refresh (supermarkets + shopping centres)
+
+# Refreshes the supermarket + shopping-centre map layers every SECOND Friday at 4pm Sydney,
+# then commits the refreshed data back to the repo. The local map picks it up on `git pull`
+# + a local `python generate_map.py` (the HTML is NOT built here — it embeds API keys and this
+# repo is public).
+#
+# GitHub cron has no native fortnightly schedule, so this fires every Friday and a gate job
+# runs the pipeline only on the right week (anchored to Fri 9 Oct 2026, then every 14 days).
+
+on:
+  schedule:
+    # Fridays 05:00 UTC = 16:00 AEDT (4pm Sydney during daylight saving, Oct-Apr).
+    # In winter (AEST) this lands at 15:00 Sydney — the same ~1h cron/DST drift the
+    # weekly pharmacy scrape already accepts (GitHub cron is fixed-UTC).
+    - cron: '0 5 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the refresh job commits the updated data back to the repo
+
+jobs:
+  # Fortnight gate: the schedule fires weekly, but we only want every second Friday.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        run: |
+          # Manual runs always proceed.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "manual dispatch -> run"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ANCHOR=$(date -u -d '2026-10-09' +%s)   # first scheduled run (Fri)
+          NOW=$(date -u +%s)
+          DIFF_DAYS=$(( (NOW - ANCHOR) / 86400 ))
+          # Scheduled triggers are 7 days apart, so DIFF_DAYS is a multiple of 7:
+          # 0,14,28... = on-week; 7,21,35... = off-week.
+          if [ "$(( DIFF_DAYS % 14 ))" -eq 0 ]; then
+            echo "on-week (DIFF_DAYS=$DIFF_DAYS) -> run"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "off-week (DIFF_DAYS=$DIFF_DAYS) -> skip"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  refresh:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      POI_CACHE_DIR: .cache
+      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Write Google OAuth files (for the Sheet read)
+        env:
+          TOKEN_JSON: ${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}
+          CREDS_JSON: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}
+        run: |
+          python -c "import os; open('token.json','w').write(os.environ['TOKEN_JSON'])"
+          python -c "import os; open('credentials.json','w').write(os.environ['CREDS_JSON'])"
+
+      # Microsoft building-footprint tiles are large; persist them across runs (the committed
+      # in-repo Places caches handle the Google side).
+      - name: Restore Microsoft footprint tile cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/msf_cache
+          key: msf-tiles-v1
+
+      - name: Build map_data.json from the Google Sheet (free, no Google API)
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python build_map_from_sheet.py
+
+      - name: Fetch supermarkets + shopping centres (OpenStreetMap, free)
+        run: python fetch_pois.py
+
+      - name: Enrich supermarket names + gap-fill (Google Places)
+        run: python enrich_places.py
+
+      - name: Resolve + dedupe shopping centres (Google Places)
+        run: python enrich_centres.py
+
+      - name: Measure supermarket footprints (OpenStreetMap, free)
+        run: python gla_supermarkets.py
+
+      - name: Measure remaining footprints (Microsoft, free)
+        run: python gla_msfootprints.py
+
+      - name: Fill in-centre GLA estimates (free)
+        run: python gla_inmall_estimates.py
+
+      - name: Add supermarket addresses + centre names (NSW gov, free)
+        run: python enrich_supermarkets.py
+
+      - name: Build centre store counts (from committed workbook, free)
+        run: python build_poi_counts.py
+
+      - name: Fetch major-centre logos (Google Places + favicons)
+        run: python fetch_centre_logos.py
+
+      - name: Commit refreshed data back to the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add poi_data.json poi_counts.json map_data.json \
+                  .cache/places_super_cache.json .cache/places_centre_cache.json
+          git add logos/centres 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: fortnightly POI refresh (supermarkets + shopping centres)"
+            git push
+          fi

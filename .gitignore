@@ -7,6 +7,17 @@ venv/
 !**/package*.json
 !.vscode/*.json
 !snapshot.json
+# Fortnightly POI pipeline — tracked data inputs/outputs (committed; refreshed by CI).
+!poi_data.json
+!poi_counts.json
+!map_data.json
+!opportunities_134a.json
+!extra_centre_counts.json
+# Seeded, persisted Google Places caches (keep CI's recurring Places cost near zero).
+!.cache/places_super_cache.json
+!.cache/places_centre_cache.json
+# Microsoft building-footprint tiles — large/binary; cached via actions/cache, never committed.
+.cache/msf_cache/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
