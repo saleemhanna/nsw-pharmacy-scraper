@@ -71,6 +71,19 @@ def test_parse_overpass_maps_and_skips_missing_coords():
     assert all("lat" in r and "lng" in r for r in out)
 
 
+def test_parse_overpass_excludes_pharmacies():
+    elements = [
+        {"type": "node", "lat": -33.7, "lon": 150.4,
+         "tags": {"name": "TerryWhite Chemmart", "healthcare": "pharmacy"}},
+        {"type": "node", "lat": -33.71, "lon": 150.41,
+         "tags": {"name": "Corner Pharmacy", "amenity": "pharmacy"}},
+        {"type": "node", "lat": -33.72, "lon": 150.42,
+         "tags": {"name": "Real Clinic", "amenity": "clinic"}},
+    ]
+    names = {r["n"] for r in parse_overpass(elements)}
+    assert names == {"Real Clinic"}
+
+
 def test_assemble_dedupes_and_classifies():
     centres = [
         {"id": "A", "n": "Alpha MC", "lat": -33.80, "lng": 151.00, "weekly_hours": 72},

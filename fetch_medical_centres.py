@@ -13,8 +13,6 @@ import json
 import os
 import sys
 import time
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +39,7 @@ area["ISO3166-2"="AU-NSW"]->.nsw;
   nwr["amenity"="clinic"](area.nsw);
   nwr["amenity"="doctors"](area.nsw);
   nwr["amenity"="hospital"](area.nsw);
-  nwr["healthcare"](area.nsw);
+  nwr["healthcare"]["healthcare"!="pharmacy"](area.nsw);
 );
 out center tags;
 """
@@ -51,20 +49,16 @@ def fetch_overpass() -> list[dict[str, Any]]:
     """Query the Overpass mirrors for NSW clinics; return parsed centre records.
 
     Best-effort: on total failure returns [] so the caller can preserve any
-    existing medical_centres.json rather than overwrite it with nothing.
+    existing medical_centres.json rather than overwrite it with nothing. Uses
+    httpx (certifi trust store) — urllib fails TLS on some NSW/OSM hosts here.
     """
-    payload = urllib.parse.urlencode({"data": QUERY}).encode()
+    headers = {"User-Agent": "PharmaSite/1.0 (NSW medical-centre locator; info@ch-legal.com.au)"}
     for url in ENDPOINTS:
         try:
-            req = urllib.request.Request(
-                url,
-                data=payload,
-                headers={
-                    "User-Agent": "PharmaSite/1.0 (NSW medical-centre locator; info@ch-legal.com.au)"
-                },
-            )
-            with urllib.request.urlopen(req, timeout=300) as r:
-                data = json.load(r)
+            with httpx.Client(timeout=300) as client:
+                r = client.post(url, data={"data": QUERY}, headers=headers)
+                r.raise_for_status()
+                data = r.json()
             return parse_overpass(data.get("elements", []))
         except Exception as e:  # noqa: BLE001
             print(

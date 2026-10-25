@@ -35,6 +35,10 @@ def parse_overpass(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
         name = (tags.get("name") or "").strip()
         if not name:
             continue
+        # Pharmacies are not medical centres (they have their own layer) — drop them even
+        # though healthcare=pharmacy matches the Overpass healthcare=* clause.
+        if tags.get("amenity") == "pharmacy" or tags.get("healthcare") == "pharmacy":
+            continue
         lat = el.get("lat")
         lng = el.get("lon")
         if lat is None or lng is None:
