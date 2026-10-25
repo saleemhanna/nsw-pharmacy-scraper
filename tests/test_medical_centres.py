@@ -1,7 +1,10 @@
 """Tests for src.medical_centres pure helpers (geo, tiers, attachment, Item 136)."""
 from __future__ import annotations
 
+import json
+
 from src.medical_centres import (
+    assemble,
     classify,
     haversine_m,
     is_item136_opportunity,
@@ -66,6 +69,35 @@ def test_parse_overpass_maps_and_skips_missing_coords():
     names = {r["n"] for r in out}
     assert names == {"Alpha Medical Centre", "Beta Clinic"}
     assert all("lat" in r and "lng" in r for r in out)
+
+
+def test_assemble_dedupes_and_classifies():
+    centres = [
+        {"id": "A", "n": "Alpha MC", "lat": -33.80, "lng": 151.00, "weekly_hours": 72},
+        {"id": "A2", "n": "Alpha MC", "lat": -33.80001, "lng": 151.00001, "weekly_hours": None},  # dup
+        {"id": "B", "n": "Beta Clinic", "lat": -34.0, "lng": 150.5, "weekly_hours": None},
+    ]
+    phs = [{"latitude": -33.8004, "longitude": 151.0, "trading_name": "Near Pharmacy"}]  # ~44 m
+    counts = {"A": (8, "nhsd", "verified"), "B": (None, "places_estimate", "unknown")}
+    out = assemble(centres, phs, counts)
+    assert len(out) == 2  # deduped
+    alpha = next(c for c in out if c["n"] == "Alpha MC")
+    assert alpha["category"] == "large" and alpha["doctor_count_confidence"] == "verified"
+    assert alpha["pharmacy_attached"] is True
+    beta = next(c for c in out if c["n"] == "Beta Clinic")
+    assert beta["category"] == "unknown" and beta["nearest_pharmacy_name"] == "Near Pharmacy"
+
+
+def test_main_preserves_existing_on_empty(tmp_path, monkeypatch):
+    import fetch_medical_centres as fmc
+
+    out_file = tmp_path / "medical_centres.json"
+    out_file.write_text('[{"n": "Keep me"}]', encoding="utf-8")
+    monkeypatch.setattr(fmc, "OUT", out_file)
+    monkeypatch.setattr(fmc, "fetch_overpass", lambda: [])
+    rc = fmc.main()
+    assert rc != 0
+    assert json.loads(out_file.read_text(encoding="utf-8")) == [{"n": "Keep me"}]
 
 
 def test_select_provider():

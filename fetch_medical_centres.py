@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from src.medical_centres import parse_overpass
+from src.medical_centres import assemble, parse_overpass, select_provider
 
 OUT = Path("medical_centres.json")
 API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
@@ -165,3 +165,43 @@ def nhsd_count(
     returning (count, "nhsd", "verified"). Stubbed until then.
     """
     return None, "nhsd", "unknown"
+
+
+def main() -> int:
+    centres = fetch_overpass()
+    if not centres:
+        print(
+            "no centres discovered; preserving existing medical_centres.json",
+            file=sys.stderr,
+        )
+        return 1
+    for c in centres:
+        c["id"] = f"{c['n']}|{round(c['lat'], 5)}|{round(c['lng'], 5)}"
+
+    pharmacies: list[dict[str, Any]] = []
+    reg = Path("map_data.json")
+    if reg.exists():
+        pharmacies = json.loads(reg.read_text(encoding="utf-8"))
+
+    provider = select_provider(NHSD_API_KEY)
+    print(f"discovered {len(centres)} centres | doctor-count provider: {provider}", flush=True)
+    provider_counts: dict[str, tuple[int | None, str, str]] = {}
+    with httpx.Client() as client:
+        for i, c in enumerate(centres, 1):
+            enrich_place(client, c)
+            if provider == "nhsd":
+                provider_counts[c["id"]] = nhsd_count(client, c, NHSD_API_KEY)
+            else:
+                provider_counts[c["id"]] = places_estimate_count(client, c)
+            if i % 200 == 0:
+                print(f"  enriched {i}/{len(centres)}", flush=True)
+
+    out = assemble(centres, pharmacies, provider_counts)
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    tiers = {t: sum(1 for c in out if c["category"] == t) for t in ("small", "medium", "large", "unknown")}
+    print(f"wrote {OUT} ({len(out)} centres) tiers={tiers}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

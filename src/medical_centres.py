@@ -111,6 +111,48 @@ def is_pharmacy_attached(distance_m: float, threshold_m: float = 60.0) -> bool:
     return distance_m <= threshold_m
 
 
+def assemble(
+    centres: list[dict[str, Any]],
+    pharmacies: list[dict[str, Any]],
+    provider_counts: dict[str, tuple[int | None, str, str]],
+) -> list[dict[str, Any]]:
+    """Build enriched centre records: dedupe, attach doctor count + tier + nearest pharmacy.
+
+    `provider_counts` maps a centre `id` to (count, source, confidence). Dedupe is by
+    (name.lower(), round(lat,4), round(lng,4)); the first occurrence wins.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, float, float]] = set()
+    for c in centres:
+        name = c.get("n", "")
+        lat, lng = float(c["lat"]), float(c["lng"])
+        key = (name.lower(), round(lat, 4), round(lng, 4))
+        if key in seen:
+            continue
+        seen.add(key)
+        count, source, confidence = provider_counts.get(c.get("id", ""), (None, "unknown", "unknown"))
+        dist, phname = nearest_pharmacy(lat, lng, pharmacies)
+        out.append(
+            {
+                "id": c.get("id"),
+                "n": name,
+                "lat": lat,
+                "lng": lng,
+                "addr": c.get("addr", ""),
+                "suburb": c.get("suburb", ""),
+                "doctor_count": count,
+                "doctor_count_source": source,
+                "doctor_count_confidence": confidence,
+                "category": classify(count),
+                "weekly_hours": c.get("weekly_hours"),
+                "nearest_pharmacy_m": round(dist, 1) if dist != float("inf") else None,
+                "nearest_pharmacy_name": phname,
+                "pharmacy_attached": is_pharmacy_attached(dist),
+            }
+        )
+    return out
+
+
 def is_item136_opportunity(
     centre: dict[str, Any],
     min_gap_m: float = 300.0,
