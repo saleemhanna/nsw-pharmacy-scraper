@@ -114,6 +114,10 @@ jobs:
       - name: Fetch major-centre logos (Google Places + favicons)
         run: python fetch_centre_logos.py
 
+      - name: Sweep for new supermarkets OSM missed (Google Places grid)
+        continue-on-error: true  # best-effort; a sweep hiccup must not lose the refresh above
+        run: python sweep_new_supermarkets.py
+
       - name: Fetch medical centres (Overpass only; free)
         continue-on-error: true  # a medical-fetch hiccup must not discard the POI refresh done above
         env:
