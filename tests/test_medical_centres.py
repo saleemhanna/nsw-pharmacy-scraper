@@ -8,6 +8,7 @@ from src.medical_centres import (
     is_pharmacy_attached,
     nearest_pharmacy,
     parse_overpass,
+    select_provider,
 )
 
 
@@ -65,6 +66,12 @@ def test_parse_overpass_maps_and_skips_missing_coords():
     names = {r["n"] for r in out}
     assert names == {"Alpha Medical Centre", "Beta Clinic"}
     assert all("lat" in r and "lng" in r for r in out)
+
+
+def test_select_provider():
+    assert select_provider(None) == "places_estimate"
+    assert select_provider("") == "places_estimate"
+    assert select_provider("secret-key") == "nhsd"
 
 
 def test_item136_opportunity_rules():

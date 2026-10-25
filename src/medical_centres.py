@@ -78,6 +78,11 @@ def classify(doctor_count: int | None) -> str:
     return "large"
 
 
+def select_provider(nhsd_key: str | None) -> str:
+    """Pick the doctor-count provider: NHSD when a key is present, else Places estimate."""
+    return "nhsd" if nhsd_key else "places_estimate"
+
+
 def nearest_pharmacy(
     lat: float, lng: float, pharmacies: list[dict[str, Any]]
 ) -> tuple[float, str | None]:

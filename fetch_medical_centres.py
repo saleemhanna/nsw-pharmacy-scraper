@@ -10,15 +10,24 @@ Usage:  python fetch_medical_centres.py   then   python generate_map.py
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from src.medical_centres import parse_overpass
 
 OUT = Path("medical_centres.json")
+API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+NHSD_API_KEY = os.environ.get("NHSD_API_KEY", "")
+TEXT_SEARCH = "https://places.googleapis.com/v1/places:searchText"
+# Cache dir: POI_CACHE_DIR (set in CI so the cache persists in-repo), else local temp.
+CACHE = Path(os.environ.get("POI_CACHE_DIR") or os.environ.get("TEMP", ".")) / "places_medical_cache.json"
 ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
@@ -64,3 +73,95 @@ def fetch_overpass() -> list[dict[str, Any]]:
             )
     print("  all Overpass endpoints failed", file=sys.stderr)
     return []
+
+
+def _weekly_hours(opening: dict[str, Any] | None) -> float | None:
+    """Sum Google regularOpeningHours periods to total open hours per week, else None."""
+    if not opening:
+        return None
+    periods = opening.get("periods") or []
+    total = 0.0
+    for per in periods:
+        o = per.get("open") or {}
+        c = per.get("close") or {}
+        if "hour" not in o or "hour" not in c:
+            return None  # 24h or malformed: treat as unknown
+        start = o.get("hour", 0) * 60 + o.get("minute", 0)
+        end = c.get("hour", 0) * 60 + c.get("minute", 0)
+        if end < start:
+            end += 24 * 60
+        total += (end - start) / 60.0
+    return total if periods else None
+
+
+def enrich_place(client: httpx.Client, centre: dict[str, Any]) -> dict[str, Any]:
+    """Fill addr/suburb/weekly_hours from Google Places Text Search (best-effort).
+
+    Returns the centre unchanged on any error or when no API key is configured.
+    """
+    if not API_KEY:
+        return centre
+    query = f"{centre['n']} {centre.get('suburb', '')} NSW".strip()
+    try:
+        r = client.post(
+            TEXT_SEARCH,
+            headers={
+                "X-Goog-Api-Key": API_KEY,
+                "X-Goog-FieldMask": (
+                    "places.formattedAddress,places.location,"
+                    "places.regularOpeningHours,places.displayName"
+                ),
+            },
+            json={"textQuery": query, "maxResultCount": 1},
+            timeout=30,
+        )
+        if r.status_code == 429:
+            time.sleep(20)
+            r = client.post(
+                TEXT_SEARCH,
+                headers={
+                    "X-Goog-Api-Key": API_KEY,
+                    "X-Goog-FieldMask": (
+                        "places.formattedAddress,places.location,"
+                        "places.regularOpeningHours,places.displayName"
+                    ),
+                },
+                json={"textQuery": query, "maxResultCount": 1},
+                timeout=30,
+            )
+        r.raise_for_status()
+        places = r.json().get("places", [])
+        if places:
+            p = places[0]
+            if p.get("formattedAddress") and not centre.get("addr"):
+                centre["addr"] = p["formattedAddress"]
+            hrs = _weekly_hours(p.get("regularOpeningHours"))
+            if hrs is not None:
+                centre["weekly_hours"] = hrs
+    except Exception as e:  # noqa: BLE001
+        print(f"  places enrich failed for {centre['n']}: {type(e).__name__}", file=sys.stderr)
+    return centre
+
+
+def places_estimate_count(
+    client: httpx.Client, centre: dict[str, Any]
+) -> tuple[int | None, str, str]:
+    """Interim doctor-count provider.
+
+    Google Places lists a clinic as a single POI, not its individual doctors, so
+    this cannot reliably count doctors: it returns (None, "places_estimate",
+    "unknown") — the scaffold case — until NHSD provides real counts.
+    """
+    return None, "places_estimate", "unknown"
+
+
+def nhsd_count(
+    client: httpx.Client, centre: dict[str, Any], api_key: str
+) -> tuple[int | None, str, str]:
+    """Authoritative doctor-count provider via the NHSD Service Finder API.
+
+    TODO(nhsd): implement once the API key is granted — search healthcareServices
+    at the centre location and count distinct GP/medical-practitioner practitioners,
+    returning (count, "nhsd", "verified"). Stubbed until then.
+    """
+    return None, "nhsd", "unknown"
