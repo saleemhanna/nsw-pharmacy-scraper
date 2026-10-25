@@ -114,8 +114,14 @@ jobs:
       - name: Fetch major-centre logos (Google Places + favicons)
         run: python fetch_centre_logos.py
 
-      - name: Fetch medical centres (Overpass + Places; NHSD when keyed)
+      - name: Fetch medical centres (Overpass only; free)
         continue-on-error: true  # a medical-fetch hiccup must not discard the POI refresh done above
+        env:
+          # Intentionally blank: keep medical discovery Overpass-only (free). Per-clinic Places
+          # enrichment (address/hours) costs ~$150 statewide and adds little while tiers are
+          # "unknown" (doctor counts come from NHSD, not Places). To enable paid enrichment later,
+          # delete this override so the job-level GOOGLE_PLACES_API_KEY is used.
+          GOOGLE_PLACES_API_KEY: ""
         run: python fetch_medical_centres.py
 
       - name: Write medical-centre opportunities to the private Sheet
