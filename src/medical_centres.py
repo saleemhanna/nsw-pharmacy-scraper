@@ -1,0 +1,87 @@
+"""Pure helpers for the medical-centres map layer.
+
+Geo distance, doctor-count tier classification, nearest-pharmacy / attachment,
+and the Item 136 "large medical centre" opportunity test. No I/O here so these
+stay unit-testable and mypy-strict clean.
+"""
+from __future__ import annotations
+
+from math import asin, cos, radians, sin, sqrt
+from typing import Any
+
+_EARTH_RADIUS_M = 6_371_000.0
+
+
+def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance between two lat/lng points, in metres."""
+    rlat1, rlat2 = radians(lat1), radians(lat2)
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(rlat1) * cos(rlat2) * sin(dlng / 2) ** 2
+    return 2 * _EARTH_RADIUS_M * asin(sqrt(a))
+
+
+def classify(doctor_count: int | None) -> str:
+    """Tier a centre by its doctor (prescribing medical practitioner) count.
+
+    1-3 -> small, 4-6 -> medium, 7+ -> large, 0/None/unknown -> "unknown".
+    """
+    if doctor_count is None or doctor_count <= 0:
+        return "unknown"
+    if doctor_count <= 3:
+        return "small"
+    if doctor_count <= 6:
+        return "medium"
+    return "large"
+
+
+def nearest_pharmacy(
+    lat: float, lng: float, pharmacies: list[dict[str, Any]]
+) -> tuple[float, str | None]:
+    """Return (distance_m, trading_name) of the closest pharmacy.
+
+    Pharmacies use `latitude`/`longitude`/`trading_name` (map_data.json shape).
+    Records without usable coordinates are skipped; an empty/absent set yields
+    (inf, None).
+    """
+    best_dist = float("inf")
+    best_name: str | None = None
+    for ph in pharmacies:
+        plat = ph.get("latitude")
+        plng = ph.get("longitude")
+        if plat is None or plng is None:
+            continue
+        d = haversine_m(lat, lng, float(plat), float(plng))
+        if d < best_dist:
+            best_dist = d
+            best_name = ph.get("trading_name")
+    return best_dist, best_name
+
+
+def is_pharmacy_attached(distance_m: float, threshold_m: float = 60.0) -> bool:
+    """True when the nearest pharmacy is within `threshold_m` (same building)."""
+    return distance_m <= threshold_m
+
+
+def is_item136_opportunity(
+    centre: dict[str, Any],
+    min_gap_m: float = 300.0,
+    min_weekly_hours: float = 70.0,
+) -> bool:
+    """Indicative Item 136 (large medical centre) pharmacy opportunity.
+
+    Large tier AND no pharmacy attached AND >= min_gap_m to the nearest
+    pharmacy AND (hours unknown OR >= min_weekly_hours). Unknown hours do not
+    disqualify a lead.
+    """
+    if centre.get("category") != "large":
+        return False
+    if centre.get("pharmacy_attached") is not False:
+        return False
+    nearest = centre.get("nearest_pharmacy_m")
+    if nearest is None or nearest < min_gap_m:
+        return False
+    hours = centre.get("weekly_hours")
+    if hours is not None and hours < min_weekly_hours:
+        return False
+    return True
