@@ -127,6 +127,30 @@ def _ensure_tab(book: Spreadsheet, name: str, columns: list[str]) -> Worksheet:
     return ws
 
 
+def write_tab(
+    book: Spreadsheet, name: str, columns: list[str], rows: list[list[str]]
+) -> int:
+    """Overwrite a worksheet with `columns` as the header and `rows` beneath it.
+
+    Generic helper for ad-hoc tabs (e.g. the medical-centre opportunity list).
+    Returns the number of data rows written.
+    """
+    from gspread.utils import rowcol_to_a1
+
+    ws = _ensure_tab(book, name, columns)
+    ws.clear()
+    ws.update(values=[columns] + rows, range_name="A1", value_input_option="RAW")
+    header_range = f"A1:{rowcol_to_a1(1, len(columns))}"
+    ws.format(header_range, {
+        "textFormat": {"bold": True, "fontSize": 10,
+                       "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
+        "backgroundColor": {"red": 0.2, "green": 0.3, "blue": 0.5},
+        "horizontalAlignment": "CENTER",
+    })
+    ws.freeze(rows=1)
+    return len(rows)
+
+
 def read_previous_current(book: Spreadsheet) -> list[dict[str, str]]:
     ws = _ensure_tab(book, "Current", CURRENT_COLUMNS)
     rows = ws.get_all_records()
