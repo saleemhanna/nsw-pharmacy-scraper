@@ -94,11 +94,31 @@ def _weekly_hours(opening: dict[str, Any] | None) -> float | None:
     return total if periods else None
 
 
-def enrich_place(client: httpx.Client, centre: dict[str, Any]) -> dict[str, Any]:
+def _cache_key(centre: dict[str, Any]) -> str:
+    return f"{centre.get('n', '')}|{centre.get('suburb', '')}"
+
+
+def _apply_enrichment(centre: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    if data.get("addr") and not centre.get("addr"):
+        centre["addr"] = data["addr"]
+    if data.get("weekly_hours") is not None:
+        centre["weekly_hours"] = data["weekly_hours"]
+    return centre
+
+
+def enrich_place(
+    client: Any, centre: dict[str, Any], cache: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Fill addr/suburb/weekly_hours from Google Places Text Search (best-effort).
 
-    Returns the centre unchanged on any error or when no API key is configured.
+    Results are cached by `_cache_key` in `cache` (persisted to CACHE across runs) so
+    repeat runs don't re-bill Google. Returns the centre unchanged on any error or
+    when no API key is configured and there is no cache hit.
     """
+    cache = cache if cache is not None else {}
+    key = _cache_key(centre)
+    if key in cache:
+        return _apply_enrichment(centre, cache[key])
     if not API_KEY:
         return centre
     query = f"{centre['n']} {centre.get('suburb', '')} NSW".strip()
@@ -131,13 +151,14 @@ def enrich_place(client: httpx.Client, centre: dict[str, Any]) -> dict[str, Any]
             )
         r.raise_for_status()
         places = r.json().get("places", [])
+        data: dict[str, Any] = {}
         if places:
             p = places[0]
-            if p.get("formattedAddress") and not centre.get("addr"):
-                centre["addr"] = p["formattedAddress"]
-            hrs = _weekly_hours(p.get("regularOpeningHours"))
-            if hrs is not None:
-                centre["weekly_hours"] = hrs
+            if p.get("formattedAddress"):
+                data["addr"] = p["formattedAddress"]
+            data["weekly_hours"] = _weekly_hours(p.get("regularOpeningHours"))
+        cache[key] = data
+        _apply_enrichment(centre, data)
     except Exception as e:  # noqa: BLE001
         print(f"  places enrich failed for {centre['n']}: {type(e).__name__}", file=sys.stderr)
     return centre
@@ -185,16 +206,33 @@ def main() -> int:
 
     provider = select_provider(NHSD_API_KEY)
     print(f"discovered {len(centres)} centres | doctor-count provider: {provider}", flush=True)
+
+    cache: dict[str, Any] = {}
+    if CACHE.exists():
+        try:
+            cache = json.loads(CACHE.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            cache = {}
+
+    def _save_cache() -> None:
+        try:
+            CACHE.parent.mkdir(parents=True, exist_ok=True)
+            CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:  # noqa: BLE001
+            print(f"  cache write failed: {type(e).__name__}", file=sys.stderr)
+
     provider_counts: dict[str, tuple[int | None, str, str]] = {}
     with httpx.Client() as client:
         for i, c in enumerate(centres, 1):
-            enrich_place(client, c)
+            enrich_place(client, c, cache)
             if provider == "nhsd":
                 provider_counts[c["id"]] = nhsd_count(client, c, NHSD_API_KEY)
             else:
                 provider_counts[c["id"]] = places_estimate_count(client, c)
             if i % 200 == 0:
                 print(f"  enriched {i}/{len(centres)}", flush=True)
+                _save_cache()
+    _save_cache()
 
     out = assemble(centres, pharmacies, provider_counts)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")

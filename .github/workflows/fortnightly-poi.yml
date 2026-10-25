@@ -115,9 +115,11 @@ jobs:
         run: python fetch_centre_logos.py
 
       - name: Fetch medical centres (Overpass + Places; NHSD when keyed)
+        continue-on-error: true  # a medical-fetch hiccup must not discard the POI refresh done above
         run: python fetch_medical_centres.py
 
       - name: Write medical-centre opportunities to the private Sheet
+        continue-on-error: true
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: python build_medical_opportunities.py
@@ -128,7 +130,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add poi_data.json poi_counts.json map_data.json \
                   .cache/places_super_cache.json .cache/places_centre_cache.json
-          git add medical_centres.json .cache/places_medical_cache.json 2>/dev/null || true
+          git add medical_centres.json 2>/dev/null || true
+          git add .cache/places_medical_cache.json 2>/dev/null || true
           git add logos/centres 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit."

@@ -88,6 +88,19 @@ def test_assemble_dedupes_and_classifies():
     assert beta["category"] == "unknown" and beta["nearest_pharmacy_name"] == "Near Pharmacy"
 
 
+def test_enrich_place_uses_cache_without_http():
+    import fetch_medical_centres as fmc
+
+    class BoomClient:
+        def post(self, *a, **k):  # noqa: ANN002, ANN003
+            raise AssertionError("HTTP called despite a cache hit")
+
+    centre = {"n": "Alpha MC", "suburb": "Testville"}
+    cache = {"Alpha MC|Testville": {"addr": "1 Cached St", "weekly_hours": 70}}
+    out = fmc.enrich_place(BoomClient(), centre, cache)
+    assert out["addr"] == "1 Cached St" and out["weekly_hours"] == 70
+
+
 def test_main_preserves_existing_on_empty(tmp_path, monkeypatch):
     import fetch_medical_centres as fmc
 
