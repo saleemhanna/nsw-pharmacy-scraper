@@ -55,6 +55,7 @@ jobs:
     env:
       POI_CACHE_DIR: .cache
       GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+      NHSD_API_KEY: ${{ secrets.NHSD_API_KEY }}  # empty until granted -> provider falls back to Places estimate
     steps:
       - uses: actions/checkout@v4
 
@@ -113,12 +114,21 @@ jobs:
       - name: Fetch major-centre logos (Google Places + favicons)
         run: python fetch_centre_logos.py
 
+      - name: Fetch medical centres (Overpass + Places; NHSD when keyed)
+        run: python fetch_medical_centres.py
+
+      - name: Write medical-centre opportunities to the private Sheet
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python build_medical_opportunities.py
+
       - name: Commit refreshed data back to the repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add poi_data.json poi_counts.json map_data.json \
                   .cache/places_super_cache.json .cache/places_centre_cache.json
+          git add medical_centres.json .cache/places_medical_cache.json 2>/dev/null || true
           git add logos/centres 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit."
