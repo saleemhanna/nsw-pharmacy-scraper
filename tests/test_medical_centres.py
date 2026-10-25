@@ -7,6 +7,7 @@ from src.medical_centres import (
     is_item136_opportunity,
     is_pharmacy_attached,
     nearest_pharmacy,
+    parse_overpass,
 )
 
 
@@ -39,6 +40,31 @@ def test_nearest_pharmacy_picks_closest():
 def test_pharmacy_attached_threshold():
     assert is_pharmacy_attached(40) is True
     assert is_pharmacy_attached(500) is False
+
+
+def test_parse_overpass_maps_and_skips_missing_coords():
+    elements = [
+        {
+            "type": "node",
+            "lat": -33.8,
+            "lon": 151.0,
+            "tags": {
+                "name": "Alpha Medical Centre",
+                "amenity": "clinic",
+                "addr:suburb": "Testville",
+            },
+        },
+        {
+            "type": "way",
+            "center": {"lat": -34.0, "lon": 150.5},
+            "tags": {"name": "Beta Clinic", "amenity": "doctors"},
+        },
+        {"type": "node", "tags": {"name": "No Coords Clinic", "amenity": "clinic"}},  # skipped
+    ]
+    out = parse_overpass(elements)
+    names = {r["n"] for r in out}
+    assert names == {"Alpha Medical Centre", "Beta Clinic"}
+    assert all("lat" in r and "lng" in r for r in out)
 
 
 def test_item136_opportunity_rules():

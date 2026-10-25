@@ -21,6 +21,49 @@ def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * _EARTH_RADIUS_M * asin(sqrt(a))
 
 
+def parse_overpass(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map Overpass elements to centre records, skipping unnamed / coordless ones.
+
+    Each record is {"n","lat","lng","addr","suburb","source"}. Coordinates come
+    from a node's `lat`/`lon` or a way/relation `center`. Deduped by
+    (name.lower(), round(lat,4), round(lng,4)).
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, float, float]] = set()
+    for el in elements:
+        tags = el.get("tags") or {}
+        name = (tags.get("name") or "").strip()
+        if not name:
+            continue
+        lat = el.get("lat")
+        lng = el.get("lon")
+        if lat is None or lng is None:
+            center = el.get("center") or {}
+            lat = center.get("lat")
+            lng = center.get("lon")
+        if lat is None or lng is None:
+            continue
+        lat_f, lng_f = float(lat), float(lng)
+        key = (name.lower(), round(lat_f, 4), round(lng_f, 4))
+        if key in seen:
+            continue
+        seen.add(key)
+        num = (tags.get("addr:housenumber") or "").strip()
+        street = (tags.get("addr:street") or "").strip()
+        addr = " ".join(p for p in (num, street) if p)
+        out.append(
+            {
+                "n": name,
+                "lat": lat_f,
+                "lng": lng_f,
+                "addr": addr,
+                "suburb": (tags.get("addr:suburb") or "").strip(),
+                "source": "overpass",
+            }
+        )
+    return out
+
+
 def classify(doctor_count: int | None) -> str:
     """Tier a centre by its doctor (prescribing medical practitioner) count.
 
