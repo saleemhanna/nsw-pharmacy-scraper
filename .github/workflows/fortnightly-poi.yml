@@ -87,6 +87,10 @@ jobs:
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: python build_map_from_sheet.py
 
+      - name: Cross-reference pharmacies vs Google Places (QA "Google-verified" popup badge)
+        continue-on-error: true  # a Places hiccup must not discard the refresh; cache => only new pharmacies bill
+        run: python xref_google_places.py
+
       - name: Fetch supermarkets + shopping centres (OpenStreetMap, free)
         run: python fetch_pois.py
 
@@ -142,6 +146,7 @@ jobs:
                   .cache/places_super_cache.json .cache/places_centre_cache.json
           git add medical_centres.json 2>/dev/null || true
           git add .cache/places_medical_cache.json 2>/dev/null || true
+          git add xref_google.json .cache/xref_google_cache.json 2>/dev/null || true
           git add logos/centres 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit."
